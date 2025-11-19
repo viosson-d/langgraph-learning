@@ -1,0 +1,17 @@
+[
+  {
+    "name": "node_1",
+    "input": "Hello LangGraph",
+    "output": "Step 1: 处理 'Hello LangGraph'"
+  },
+  {
+    "name": "node_2",
+    "input": "Step 1: 处理 'Hello LangGraph'",
+    "output": "Step 1: 处理 'Hello LangGraph' → Step 2: 分析完成"
+  },
+  {
+    "name": "node_3",
+    "input": "Step 2: 分析完成",
+    "output": "Step 1: 处理 'Hello LangGraph' → Step 2: 分析完成 → Step 3: 最终输出"
+  }
+]

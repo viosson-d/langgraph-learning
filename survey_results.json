@@ -1,0 +1,20 @@
+{
+  "successful": {
+    "satisfaction_level": "很满意 😊",
+    "score": 5,
+    "recommendation": "保持现有服务质量",
+    "user_profile": {
+      "name": "张三",
+      "age": "25",
+      "user_id": "user_001"
+    }
+  },
+  "errors": [
+    {
+      "reason": "缺少字段: ['age', 'satisfaction']"
+    },
+    {
+      "reason": "年龄必须在 0-150 之间"
+    }
+  ]
+}
