@@ -61,15 +61,7 @@ def track_agent_action(action_name: Optional[str] = None):
             # 使用 Langfuse observe 装饰器
             name = action_name or func.__name__
             
-            @observe(
-                name=f"{agent_name}.{name}",
-                metadata={
-                    "agent_id": agent_id,
-                    "agent_name": agent_name,
-                    "action": name,
-                    "timestamp": datetime.now().isoformat()
-                }
-            )
+            @observe(name=f"{agent_name}.{name}")
             def traced_func():
                 return func(self, *args, **kwargs)
             
@@ -142,17 +134,13 @@ class TrackedAgent:
         if not self.langfuse_client:
             return
         
-        self.langfuse_client.trace(
-            name=f"{self.agent_name}.initialized",
-            metadata={
-                "agent_id": self.agent_id,
-                "agent_name": self.agent_name,
-                "agent_type": self.agent_type,
-                "department": self.department,
-                "position": self.position,
-                "timestamp": datetime.now().isoformat()
-            }
-        )
+        try:
+            self.langfuse_client.trace(
+                name=f"{self.agent_name}.initialized"
+            )
+        except Exception as e:
+            # 静默处理追踪错误
+            pass
     
     @observe(name="agent_execute")
     def execute(self, *args, **kwargs) -> Any:
