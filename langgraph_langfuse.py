@@ -1,24 +1,47 @@
 import os
-from langfuse.callback import CallbackHandler
+from dotenv import load_dotenv
+from langfuse import Langfuse
 from langgraph.graph import StateGraph, START, END
 from typing import TypedDict
 
-# 配置 Langfuse（本地或云端）
-# 选项1: 使用 Langfuse Cloud
-# os.environ["LANGFUSE_PUBLIC_KEY"] = "your-public-key"
-# os.environ["LANGFUSE_SECRET_KEY"] = "your-secret-key"
-# os.environ["LANGFUSE_HOST"] = "https://cloud.langfuse.com"  # 默认值
+# 加载环境变量
+load_dotenv()
 
-# 选项2: 使用本地 Langfuse
-os.environ["LANGFUSE_HOST"] = "http://localhost:3000"  # 本地部署
-# os.environ["LANGFUSE_PUBLIC_KEY"] = "your-public-key"
-# os.environ["LANGFUSE_SECRET_KEY"] = "your-secret-key"
+# 获取配置
+langfuse_host = os.getenv("LANGFUSE_HOST", "http://localhost:3000")
+langfuse_public_key = os.getenv("LANGFUSE_PUBLIC_KEY")
+langfuse_secret_key = os.getenv("LANGFUSE_SECRET_KEY")
 
-# 初始化 Langfuse callback
-langfuse_callback = CallbackHandler(
-    public_key="default-public-key",
-    secret_key="default-secret-key",
-    host="http://localhost:3000"  # 使用本地部署
+if not langfuse_public_key or "..." in langfuse_public_key:
+    print("⚠️  请先配置 .env 文件中的 Langfuse 密钥！")
+    exit(1)
+
+from langfuse import Langfuse
+
+# 加载环境变量
+load_dotenv()
+
+# 获取配置
+langfuse_host = os.getenv("LANGFUSE_HOST", "http://localhost:3000")
+langfuse_public_key = os.getenv("LANGFUSE_PUBLIC_KEY")
+langfuse_secret_key = os.getenv("LANGFUSE_SECRET_KEY")
+
+if not langfuse_public_key or "..." in langfuse_public_key:
+    print("⚠️  请先配置 .env 文件中的 Langfuse 密钥！")
+    exit(1)
+
+# 初始化 Langfuse 客户端
+# langfuse = Langfuse(
+#     public_key=langfuse_public_key,
+#     secret_key=langfuse_secret_key,
+#     host=langfuse_host
+# )
+
+# 初始化 Langfuse 客户端
+langfuse = Langfuse(
+    public_key=langfuse_public_key,
+    secret_key=langfuse_secret_key,
+    host=langfuse_host
 )
 
 # 定义状态
@@ -32,34 +55,51 @@ graph = StateGraph(State)
 # 定义节点
 def process_node(state: State) -> State:
     """处理输入"""
-    state["output"] = f"处理完成: {state['input']}"
-    return state
+    # 使用 Langfuse v3 装饰器
+    from langfuse.decorators import observe
+    
+    @observe(name="process_node")
+    def _run(inp):
+        return f"处理完成: {inp}"
+        
+    result = _run(state["input"])
+    return {"output": result}
 
 def analyze_node(state: State) -> State:
     """分析输出"""
-    state["output"] = f"{state['output']} -> 分析完成"
-    return state
+    # 使用 Langfuse v3 装饰器
+    from langfuse.decorators import observe
+    
+    @observe(name="analyze_node")
+    def _run(inp):
+        return f"{inp} -> 分析完成"
+        
+    result = _run(state["output"])
+    return {"output": result}
+
 
 # 添加节点
 graph.add_node("process", process_node)
 graph.add_node("analyze", analyze_node)
 
-# 添加边
+# 构建边
 graph.add_edge(START, "process")
 graph.add_edge("process", "analyze")
 graph.add_edge("analyze", END)
 
 # 编译图
-compiled_graph = graph.compile()
+app = graph.compile()
 
-# 运行图（集成 Langfuse 追踪）
-try:
-    result = compiled_graph.invoke(
-        {"input": "Hello LangGraph with Langfuse", "output": ""},
-        config={"callbacks": [langfuse_callback]}
-    )
-    print(f"✅ 结果: {result}")
-    print("\n📊 追踪已发送到 Langfuse！请访问你的 Langfuse 仪表板查看。")
-except Exception as e:
-    print(f"⚠️ 如果看到连接错误，请确保已配置 Langfuse 凭证或启动了本地服务器")
-    print(f"错误: {e}")
+# 运行测试
+print("🚀 开始运行 LangGraph + Langfuse 测试...")
+inputs = {"input": "Hello Langfuse"}
+
+# 不使用 callbacks，因为我们手动 instrument 了节点
+for output in app.stream(inputs):
+    for key, value in output.items():
+        print(f"Node '{key}': {value}")
+
+# 确保数据发送完成
+langfuse.flush()
+print("✅ 测试完成！请查看 Langfuse 控制台: http://localhost:3000")
+
